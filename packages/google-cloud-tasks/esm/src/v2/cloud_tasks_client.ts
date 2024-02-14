@@ -28,36 +28,40 @@ import type {
   LocationsClient,
   LocationProtos,
 } from 'google-gax';
-import {Transform} from 'stream';
-// @ts-ignore
-import type * as protos from '../../../protos/protos.js';
-import * as cloud_tasks_client_config from './cloud_tasks_client_config.json';
-import fs from 'fs';
+import {createRequire} from 'module';
 import path from 'path';
+import {Transform} from 'stream';
 import {fileURLToPath} from 'url';
-// @ts-ignore
-const dirname = path.dirname(fileURLToPath(import.meta.url));
+
+import type * as protos from '../../../protos/protos.js';
+
+// we use module.createRequire() to import JSON files
+// in a way that works when transpiled to both ESM and CJS
+// and compatible with Node.js 14+ (as currently supported by this package)
+const moduleAgnosticImportMetaUrl =
+  // @ts-ignore -- typescript will error on use of import.meta.url here
+  // as we have "module" set to CommonJS in tsconfig.json
+  // but for the CJS build we transform via Babel using the replaceImportMetaUrl
+  // plugin from gapic-tools to replace import.meta.url with __dirname.
+  //
+  // We only use path.dirname(fileURLToPath(...)) (and and then re-append
+  // the current filename after) since this is required to use the
+  // replaceImportMetaUrl plugin as of gapic-tools v0.3.0. We could alternatively
+  // introduce a new plugin to simply rewrite import.meta.url to __dirname
+  // without the need for this path.dirname(fileURLToPath(...)) wrapping.
+  path.dirname(fileURLToPath(import.meta.url)) + '/cloud_tasks_client.js';
+const _require = createRequire(moduleAgnosticImportMetaUrl);
 
 /**
  * Client JSON configuration object, loaded from
  * `src/v2/cloud_tasks_client_config.json`.
  * This file defines retry strategy and timeouts for all API methods in this library.
  */
-const gapicConfig = JSON.parse(
-  fs.readFileSync(path.join(dirname, 'cloud_tasks_client_config.json'), 'utf8')
-);
-const jsonProtos = JSON.parse(
-  fs.readFileSync(
-    path.join(dirname, '..', '..', '..', 'protos/protos.json'),
-    'utf8'
-  )
-);
-const version = JSON.parse(
-  fs.readFileSync(
-    path.join(dirname, '..', '..', '..', '..', 'package.json'),
-    'utf8'
-  )
-).version;
+const gapicConfig = _require('./cloud_tasks_client_config.json');
+
+const jsonProtos = _require('../../../protos/protos.json');
+
+const version = _require('../../../package.json').version;
 
 /**
  *  Cloud Tasks allows developers to manage the execution of background
@@ -222,9 +226,7 @@ export class CloudTasksClient {
     }
 
     // Load the applicable protos.
-    this._protos = this._gaxGrpc.loadProtoJSON(
-      jsonProtos as gax.protobuf.INamespace
-    );
+    this._protos = this._gaxGrpc.loadProtoJSON(jsonProtos);
 
     // This API contains "path templates"; forward-slash-separated
     // identifiers to uniquely identify resources within the API.
